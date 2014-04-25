@@ -3,6 +3,8 @@ package org.infolab.joins
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd._
+import scala.collection.immutable.HashMap
+
 /**
 * Executes an n-way join using Shares algorithm
 */
@@ -11,16 +13,24 @@ object Shares {
   def main(args: Array[String]) {
     
     val sharesArgs = new SharesArguments(args);
-
     val NUM_RELATIONS: Int = sharesArgs.m
     val NUM_REDUCERS: Int = sharesArgs.numReducers
     val NUM_DIMENSIONS: Int = sharesArgs.m - 1
     val DIMENSION_SIZE = Math.pow(sharesArgs.numReducers.toDouble, 1.0 / NUM_DIMENSIONS.toDouble).toInt
 
-    val sc = new SparkContext(sharesArgs.sparkMasterAddr, "Shares",
-      System.getenv("SPARK_HOME"), SparkContext.jarOfClass(this.getClass))
+    val environmentMap = HashMap("spark.akka.logLifecycleEvents" -> "true",
+      "spark.akka.askTimeout" -> "10",
+      "akka.loglevel" -> sharesArgs.logLevel.toString.replace("WARN", "WARNING"),
+      "spark.akka.frameSize" -> "1000",
+      "spark.serializer" -> "spark.KryoSerializer",
+      "spark.kryoserializer.buffer.mb" -> "10",
+      "spark.shuffle.consolidateFiles" -> "true");
+
+    val sc = new SparkContext(sharesArgs.sparkMasterAddr, "Shares Algorithm", System.getenv("SPARK_HOME"),
+      sharesArgs.jars, environmentMap, null);
+
     val relations = (for (i <- 0 until NUM_RELATIONS) yield {
-      sc.textFile(sharesArgs.inputFiles(i)).map(line => {
+      sc.textFile(sharesArgs.inputFiles(i), 120).map(line => { //TODO: Parameterize
           val Array(x, y) = line.split("\\s+").map(_.toLong)
           (i.toByte, x, y)
       })
@@ -63,7 +73,7 @@ object Shares {
       }).toList
     }
 
-    val m = dataSet.flatMap(tuple => findKeysInKeySpace(tuple)).groupByKey
+    val m = dataSet.flatMap(tuple => findKeysInKeySpace(tuple)).groupByKey(120) //TODO: Parameterize
     .flatMapValues(arrBuf => {
       val map = arrBuf.groupBy(
         arr => arr._1
