@@ -3,17 +3,21 @@ package org.infolab.joins
 import org.apache.log4j.Level
 
 class SharesArguments(args: Array[String]) {
-  var sparkMasterAddr: String = "";
-  var inputFiles: Array[String] = Array.empty[String];
+  var sparkMasterAddr: String = ""
+  var inputFiles: Array[String] = Array.empty[String]
   var outputFile: String = ""
   var m: Int = -1
-  var semijoinAlgorithm = SemijoinAlgorithm.CogroupPrimitive;
+  var numReducers: Int = -1
+  var semijoinAlgorithm = SemijoinAlgorithm.CogroupPrimitive
   var logLevel = Level.WARN
-  var jars: Array[String] = Array.empty[String];
+  var jars: Array[String] = Array.empty[String]
   
   parse(args.toList)
 
-  if (inputFiles.length == 1 & m <= 1) {
+  if (numReducers == -1) {
+    println("You must specify the number of reducers using -nr or --numReducers")
+    printUsageAndExit(1)
+  } else if (inputFiles.length == 1 & m <= 1) {
     println("If you specify one relation as inputFiles, then you have to specify -m > 1")
     printUsageAndExit(1)
   } else if (inputFiles.length > 1 && m > 1 && (m != inputFiles.length)) {
@@ -41,6 +45,10 @@ class SharesArguments(args: Array[String]) {
 
     case ("--outputFile" | "-of") :: value :: tail =>
       outputFile = value
+	  if (!tail.isEmpty) parse(tail)
+
+    case ("--numReducers" | "-nr") :: value :: tail =>
+      numReducers = value.toInt
 	  if (!tail.isEmpty) parse(tail)
 
     case ("--numRelations" | "-m") :: value :: tail =>
@@ -84,6 +92,7 @@ class SharesArguments(args: Array[String]) {
         |Options:
         |   -ifs file1::file2::..., --inputFiles file1::file2::... 	Full path to the input relation files separated by ::
         |   -m numRelations, --numRelations numRelations 			Number of relations to join. Should be specified only if only one input file is specified.
+        |   -nr numReducers, --numReducers  numReducers 			Number of reducers to use.
         |   -sm sparkMasterAddr, --sparkMaster sparkMasterAddr 		Address of the spark master (e.g. local, spark://iln01.stanford.edu:7077)
         |   -sja {cogroup, union}, --semijoinAlg {cogroup, union} 	Type of the semijoin algorithm: either joins two 
         |                                                        	relations by join-map to give back the left one,
