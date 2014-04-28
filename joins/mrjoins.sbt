@@ -1,4 +1,4 @@
-name := "DYS"
+name := "MrJoins"
 
 version := "1.0"
 
