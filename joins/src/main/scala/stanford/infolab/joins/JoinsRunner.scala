@@ -4,7 +4,7 @@ package	stanford.infolab.joins
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.log4j.Logger
-import scala.collection.immutable.HashMap
+import scala.collection.mutable.HashMap
 import org.apache.spark.scheduler.SparkListener
 import org.apache.spark.scheduler.SparkListenerTaskEnd
 import stanford.infolab.joins.dys.DYS
@@ -23,13 +23,14 @@ object JoinsRunner {
       "spark.akka.askTimeout" -> "10",
       "akka.loglevel" -> joinsArgs.logLevel.toString.replace("WARN", "WARNING"),
       "spark.akka.frameSize" -> "1000",
-      "spark.serializer" -> "spark.KryoSerializer",
-      "spark.kryoserializer.buffer.mb" -> "10",
 //      "spark.io.compression.codec" -> "org.apache.spark.io.SnappyCompressionCodec");
       "spark.shuffle.consolidateFiles" -> "true");
-    println("running with kryoserializer");
+    if (joinsArgs.kryoCompression) {
+      println("running with kryoserializer");
+      environmentMap +=  "spark.serializer" -> "spark.KryoSerializer";
+      environmentMap +=  "spark.kryoserializer.buffer.mb" -> joinsArgs.kryoBufferSizeMB.toString;
+    }
     println("running with shuffle file consolidation");
-    println("SPARK_HOME: " + System.getenv("SPARK_HOME"))
     val sc = new SparkContext(joinsArgs.sparkMasterAddr, "MRJoins", System.getenv("SPARK_HOME"),
       joinsArgs.jars, environmentMap, null);
     val listener = new ShuffleReadAndWriteListener(sc);
@@ -46,12 +47,15 @@ object JoinsRunner {
           println("Computing line query with DYS.");
           joinsAlgorithm = new DYS(joinsArgs);
         }
-        case SharesNestedLoop => {
+        case NestedLoopJoinShares => {
           println("Computing line query with NestedLoopJoinShares.");
           joinsAlgorithm = new NestedLoopJoinShares(joinsArgs);
         }
-        case SharesYannakakis => {
-          throw new RuntimeException("YannakakisShares is not yet supported!");
+        case SortedNestedLoopJoinShares => {
+          throw new RuntimeException("SortedNestedLoopJoinShares is not yet supported!");
+        }
+        case YannakakisShares => {
+          throw new RuntimeException("YannakakisShares is not yet supported!");          
         }
       }
       val finalJoin = joinsAlgorithm.computeLineQuery(sc);

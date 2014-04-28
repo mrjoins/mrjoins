@@ -20,7 +20,9 @@ class JoinsArguments(args: Array[String]) extends Serializable {
   var unpersistIntermediateResults: Boolean = false;
   var skipSemijoining: Boolean = false;
   var numtimesToExecuteQuery = 1;
-
+  var kryoCompression: Boolean = true;
+  var kryoBufferSizeMB: Int = 10;
+  
   parse(args.toList)
 
   if (inputFiles.length == 1 & m <= 1) {
@@ -45,9 +47,9 @@ class JoinsArguments(args: Array[String]) extends Serializable {
       if (value == "dys") {
         joinAlgorithm = JoinAlgorithm.DYS;
       } else if (value == "sharesNested") {
-        joinAlgorithm = JoinAlgorithm.SharesNestedLoop;
+        joinAlgorithm = JoinAlgorithm.NestedLoopJoinShares;
       } else if (value == "sharesYannakakis") {
-        joinAlgorithm = JoinAlgorithm.SharesYannakakis;
+        joinAlgorithm = JoinAlgorithm.YannakakisShares;
       } else {
         throw new RuntimeException("Value of the algorithm (--algorithm or -alg argument) has to" +
           " be one of {dys/sharesNestes/sharesYannakakis}");
@@ -98,6 +100,14 @@ class JoinsArguments(args: Array[String]) extends Serializable {
       numtimesToExecuteQuery = value.toInt
 	  if (!tail.isEmpty) parse(tail)
 
+	case ("--kryoCompression" | "-kryo") :: value :: tail =>
+      kryoCompression = value.toBoolean
+	  if (!tail.isEmpty) parse(tail)
+
+	case ("--kryoBufferSizeMB" | "-kbs") :: value :: tail =>
+      kryoBufferSizeMB = value.toInt
+	  if (!tail.isEmpty) parse(tail)
+	  
 	case ("--verbose" | "-v") :: tail =>
       logLevel = Level.INFO
 	  if (!tail.isEmpty) parse(tail)
@@ -135,6 +145,8 @@ class JoinsArguments(args: Array[String]) extends Serializable {
         |   -unpersist true/false, --unpersist true/false			Whether to unpersist cached intermediate results when possible
         |   -ssj true/false, --skipSemijoining true/false			Whether to skip the semijoining phase and directly join the tables (as Shark does)
         |   -nteq [# times], --numTimesToExecuteQuery [# times]	    Number of times to execute query.
+        |   -kryo {true/false}, --kryoCompression {true/false}      Whether to use kryo compression.
+        |   -kbs bufferSizeMB, --kryoBufferSizeMB                   Kryo buffer size in MB (10 by default)
         |   -v, --verbose                  							Print more debugging output
       
       """.stripMargin
@@ -145,5 +157,5 @@ class JoinsArguments(args: Array[String]) extends Serializable {
 
 object JoinAlgorithm extends Enumeration {
   type JoinAlgorithm = Value
-  val DYS, SharesNestedLoop, SharesYannakakis = Value
+  val DYS, NestedLoopJoinShares, SortedNestedLoopJoinShares, YannakakisShares = Value
 }

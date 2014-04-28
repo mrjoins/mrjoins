@@ -12,9 +12,9 @@ import scala.util.Random
  */
 object RelationGenerator {
 
-  def main(args: Array[String]) {
+  def main2(args: Array[String]) {
     val rgArgs = new RelationGeneratorArguments(args);
-    
+
     val writer = new BufferedWriter(new FileWriter(new File(rgArgs.outputFile)))
     val random = new Random()
     for (i <- 1 to rgArgs.numTuples) {
@@ -22,7 +22,7 @@ object RelationGenerator {
         if (j > 0) {
           writer.write("\t");
         }	
-        writer.write(nextLong(random, rgArgs.domainSizes(j)).toString)          
+        writer.write(nextLong(random, rgArgs.domainSizes(j)).toString)
 //          Random.nextInt(rgArgs.domainSizes(j)).toString);
       }
       writer.write("\n")
@@ -37,6 +37,6 @@ object RelationGenerator {
       bits = (rng.nextLong() << 1) >>> 1;
       longVal = bits % n;
     } while (bits - longVal + (n - 1) < 0L);
-    return longVal;
+    return longVal + 4294967296L;
   }
 }
