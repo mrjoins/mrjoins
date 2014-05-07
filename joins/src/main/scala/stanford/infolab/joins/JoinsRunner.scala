@@ -10,6 +10,7 @@ import org.apache.spark.scheduler.SparkListenerTaskEnd
 import stanford.infolab.joins.dys.DYS
 import stanford.infolab.joins.JoinAlgorithm._
 import stanford.infolab.joins.shares.NestedLoopJoinShares
+import stanford.infolab.joins.shares.SortedNestedLoopJoin
 
 object JoinsRunner {
 
@@ -52,7 +53,7 @@ object JoinsRunner {
           joinsAlgorithm = new NestedLoopJoinShares(joinsArgs);
         }
         case SortedNestedLoopJoinShares => {
-          throw new RuntimeException("SortedNestedLoopJoinShares is not yet supported!");
+          joinsAlgorithm = new SortedNestedLoopJoin(joinsArgs);
         }
         case YannakakisShares => {
           throw new RuntimeException("YannakakisShares is not yet supported!");          
