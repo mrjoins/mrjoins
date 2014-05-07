@@ -48,6 +48,8 @@ class JoinsArguments(args: Array[String]) extends Serializable {
         joinAlgorithm = JoinAlgorithm.DYS;
       } else if (value == "sharesNested") {
         joinAlgorithm = JoinAlgorithm.NestedLoopJoinShares;
+      } else if (value == "sharesSortedNested") {
+        joinAlgorithm = JoinAlgorithm.SortedNestedLoopJoinShares;
       } else if (value == "sharesYannakakis") {
         joinAlgorithm = JoinAlgorithm.YannakakisShares;
       } else {
@@ -131,7 +133,7 @@ class JoinsArguments(args: Array[String]) extends Serializable {
         |
         |***Currently only implements line queries***
         |Options:
-        |   -alg {dys/sharesNested/sharesYannakakis}, --algorithm {dys/sharesNested/sharesYannakakis} Which distributed join algorithm to run
+        |   -alg {dys/sharesNested/sharesSortedNested/sharesYannakakis}, --algorithm {dys/sharesNested/sharesSortedNested/sharesYannakakis} Which distributed join algorithm to run
         |   -ifs file1::file2::..., --inputFiles file1::file2::... 	Full path to the input relation files separated by ::
         |   -m numRelations, --numRelations numRelations 			Number of relations to join. Should be specified only if only one input file is specified.
         |   -sm sparkMasterAddr, --sparkMaster sparkMasterAddr 		Address of the spark master (e.g. local, spark://iln01.stanford.edu:7077)
