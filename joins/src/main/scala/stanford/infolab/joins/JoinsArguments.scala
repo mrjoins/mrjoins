@@ -22,6 +22,10 @@ class JoinsArguments(args: Array[String]) extends Serializable {
   var numtimesToExecuteQuery = 1;
   var kryoCompression: Boolean = true;
   var kryoBufferSizeMB: Int = 10;
+  var schemas: Array[(Byte, Byte)] = Array.empty[(Byte, Byte)];
+  var isInputInAdjListFormat: Boolean = true;
+  var numCores: Int = -1;
+  var countMotifsOnce: Boolean = false;
   
   parse(args.toList)
 
@@ -50,11 +54,24 @@ class JoinsArguments(args: Array[String]) extends Serializable {
         joinAlgorithm = JoinAlgorithm.NestedLoopJoinShares;
       } else if (value == "sharesYannakakis") {
         joinAlgorithm = JoinAlgorithm.YannakakisShares;
+      } else if (value == "gj") {
+        joinAlgorithm = JoinAlgorithm.GenericJoin;
       } else {
         throw new RuntimeException("Value of the algorithm (--algorithm or -alg argument) has to" +
-          " be one of {dys/sharesNestes/sharesYannakakis}");
+          " be one of {dys/sharesNested/sharesYannakakis}");
       }
 	  if (!tail.isEmpty) parse(tail)
+
+	  // The schema of each relation is as follows: R_k=(A_i, A_j) where i < j. This should be
+	  // represented in the specified argument, e.g: 1,2::2,4::2,3::3,4
+	  case ("--schema" | "-sch") :: value :: tail =>
+      val schemasStringSplit = value.split("::")
+	    schemas = new Array[(Byte, Byte)](schemasStringSplit.length)
+      for (i <- 0 to schemasStringSplit.length - 1) {
+        val schema = schemasStringSplit(i).split("-");
+        schemas(i) = (schema(0).toByte, schema(1).toByte);
+      }
+	    if (!tail.isEmpty) parse(tail)
 
     case ("--sparkMaster" | "-sm") :: value :: tail =>
       sparkMasterAddr = value
@@ -63,6 +80,14 @@ class JoinsArguments(args: Array[String]) extends Serializable {
     case ("--inputFiles" | "-ifs") :: value :: tail =>
       inputFiles = value.split("::")
 	  if (!tail.isEmpty) parse(tail)
+
+    case ("--inputFormat" | "-iformat") :: value :: tail =>
+      if (value == "adjlist") isInputInAdjListFormat = true
+      else if (value == "edgelist") isInputInAdjListFormat = false
+      else {
+        throw new RuntimeException("The format of the input files can be either adjlist or " 
+          + "edgelist. current value is: " + value);}
+      if (!tail.isEmpty) parse(tail)
 
     case ("--outputFile" | "-of") :: value :: tail =>
       outputFile = value
@@ -83,6 +108,10 @@ class JoinsArguments(args: Array[String]) extends Serializable {
 	case ("--reduceParallelism" | "-rp") :: value :: tail =>
       reduceParallelism = value.toInt
 	  if (!tail.isEmpty) parse(tail)
+
+  case ("--numCores" | "-nc") :: value :: tail =>
+      numCores = value.toInt
+    if (!tail.isEmpty) parse(tail)
 
 	case ("--cacheIntermediateResults" | "-cir") :: value :: tail =>
       cacheIntermediateResults = value.toBoolean
@@ -107,12 +136,16 @@ class JoinsArguments(args: Array[String]) extends Serializable {
 	case ("--kryoBufferSizeMB" | "-kbs") :: value :: tail =>
       kryoBufferSizeMB = value.toInt
 	  if (!tail.isEmpty) parse(tail)
+
+	case ("--countMotifsOnce" | "-cmo") :: value :: tail =>
+    countMotifsOnce = value.toBoolean
+    if (!tail.isEmpty) parse(tail)
 	  
 	case ("--verbose" | "-v") :: tail =>
-      logLevel = Level.INFO
+      logLevel = Level.DEBUG
 	  if (!tail.isEmpty) parse(tail)
     
-    case ("--help" | "-h") :: tail =>
+  case ("--help" | "-h") :: tail =>
       printUsageAndExit(0)
 
     case _ =>
@@ -133,6 +166,7 @@ class JoinsArguments(args: Array[String]) extends Serializable {
         |Options:
         |   -alg {dys/sharesNested/sharesYannakakis}, --algorithm {dys/sharesNested/sharesYannakakis} Which distributed join algorithm to run
         |   -ifs file1::file2::..., --inputFiles file1::file2::... 	Full path to the input relation files separated by ::
+        |   -iformat adj/edge, --inputFormat adj/edge The format of the input files. Can either be adjlist or edgelist.
         |   -m numRelations, --numRelations numRelations 			Number of relations to join. Should be specified only if only one input file is specified.
         |   -sm sparkMasterAddr, --sparkMaster sparkMasterAddr 		Address of the spark master (e.g. local, spark://iln01.stanford.edu:7077)
         |   -of outputFile, --outputFile outputFile                 Full path to the output file to store the output of the join
@@ -141,12 +175,14 @@ class JoinsArguments(args: Array[String]) extends Serializable {
         |															of intial RDDs.
         |   -rp parallelism, --reduceParallelism parallism			Level of parallelism in `reducing` stages. Essentially sets the number of partitions
         |															of cogrouped/joined RDDs.
+        |   -nc #cores, --numCores #cores number of cores to use in the cluster when executing the algorithms. Essentially sets the spark.cores.max parameter
         |   -cir true/false, --cacheIntermediateResults true/false  Whether to cache intermediate results during the join.
         |   -unpersist true/false, --unpersist true/false			Whether to unpersist cached intermediate results when possible
         |   -ssj true/false, --skipSemijoining true/false			Whether to skip the semijoining phase and directly join the tables (as Shark does)
         |   -nteq [# times], --numTimesToExecuteQuery [# times]	    Number of times to execute query.
         |   -kryo {true/false}, --kryoCompression {true/false}      Whether to use kryo compression.
         |   -kbs bufferSizeMB, --kryoBufferSizeMB                   Kryo buffer size in MB (10 by default)
+        |   -cmo {true/false}, --countMotifsOnce {true/false}  Whether to count triangles/rectangles once.
         |   -v, --verbose                  							Print more debugging output
       
       """.stripMargin
@@ -157,5 +193,5 @@ class JoinsArguments(args: Array[String]) extends Serializable {
 
 object JoinAlgorithm extends Enumeration {
   type JoinAlgorithm = Value
-  val DYS, NestedLoopJoinShares, SortedNestedLoopJoinShares, YannakakisShares = Value
+  val DYS, NestedLoopJoinShares, SortedNestedLoopJoinShares, YannakakisShares, GenericJoin = Value
 }

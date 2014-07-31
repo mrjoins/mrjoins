@@ -1,4 +1,3 @@
-/*** JoinPrimitiveDYSLineQuery.scala ***/
 package stanford.infolab.joins.dys;
 
 import org.apache.spark.SparkContext
@@ -23,7 +22,7 @@ import stanford.infolab.joins.JoinsAlgorithm
  */
 class DYS(joinsArgs: JoinsArguments) extends JoinsAlgorithm(joinsArgs) {
 
-  def computeLineQuery(sc: SparkContext): RDD[_] = {
+  def computeQuery(sc: SparkContext): RDD[_] = {
     val startTime = System.currentTimeMillis();
     var originalEdgesRDDList = parseEdgesIntoRDDs(sc);
     if (joinsArgs.cacheIntermediateResults) {

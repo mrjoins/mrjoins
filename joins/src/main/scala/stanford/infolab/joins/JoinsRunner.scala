@@ -10,6 +10,7 @@ import org.apache.spark.scheduler.SparkListenerTaskEnd
 import stanford.infolab.joins.dys.DYS
 import stanford.infolab.joins.JoinAlgorithm._
 import stanford.infolab.joins.shares.NestedLoopJoinShares
+import stanford.infolab.joins.gj.GenericJoin
 
 object JoinsRunner {
 
@@ -18,17 +19,22 @@ object JoinsRunner {
    * a file that contains the edges of a graph.
    */
   def main(args: Array[String]) {
+    println("NEW JOINS RUNNER...")
     val joinsArgs = new JoinsArguments(args);
     val environmentMap = HashMap("spark.akka.logLifecycleEvents" -> "true",
       "spark.akka.askTimeout" -> "10",
       "akka.loglevel" -> joinsArgs.logLevel.toString.replace("WARN", "WARNING"),
       "spark.akka.frameSize" -> "1000",
-//      "spark.io.compression.codec" -> "org.apache.spark.io.SnappyCompressionCodec");
       "spark.shuffle.consolidateFiles" -> "true");
     if (joinsArgs.kryoCompression) {
-      println("running with kryoserializer");
+      println("running with kryoserializer. buffer size: " + joinsArgs.kryoBufferSizeMB);
       environmentMap +=  "spark.serializer" -> "spark.KryoSerializer";
       environmentMap +=  "spark.kryoserializer.buffer.mb" -> joinsArgs.kryoBufferSizeMB.toString;
+    }
+    if (joinsArgs.numCores > 0) {
+      println("setting spark.cores.max and spark.deploy.defaultCores to: " + joinsArgs.numCores)
+      environmentMap +=  "spark.cores.max" -> joinsArgs.numCores.toString;
+      environmentMap +=  "spark.deploy.defaultCores" -> joinsArgs.numCores.toString;
     }
     println("running with shuffle file consolidation");
     val sc = new SparkContext(joinsArgs.sparkMasterAddr, "MRJoins", System.getenv("SPARK_HOME"),
@@ -57,8 +63,12 @@ object JoinsRunner {
         case YannakakisShares => {
           throw new RuntimeException("YannakakisShares is not yet supported!");          
         }
+        case GenericJoin => {
+          println("Computing cycle query with GenericJoin.");
+          joinsAlgorithm = new GenericJoin(joinsArgs);
+        }
       }
-      val finalJoin = joinsAlgorithm.computeLineQuery(sc);
+      val finalJoin = joinsAlgorithm.computeQuery(sc);
       if (joinsArgs.outputFile == "") {
         println("Output file not specified. So not saving the results as output file.")
         println("\nFINAL JOIN.  size: " + finalJoin.count() + "\n");
@@ -69,9 +79,12 @@ object JoinsRunner {
           + "ms.");
       }
       val finishTime = System.currentTimeMillis();
-      println("Finished Join. Total time: " + (finishTime - timeBeforeStartingRound) + "ms.");
-      println("totalShuffleRead: " + listener.totalShuffleRead)
-      println("totalShuffleWritte: " + listener.totalShuffleWrite)
+      val timeTakenInSeconds = (finishTime - timeBeforeStartingRound)/1000;
+      val totalShuffleRead = (listener.totalShuffleRead.toDouble/1073741824L.toDouble)
+      val totalShuffleWrite = (listener.totalShuffleWrite.toDouble/1073741824L.toDouble)
+      println("totalShuffleRead: " + "%.3f".format(totalShuffleRead) + " GB.")
+      println("totalShuffleWrite: " + "%.3f".format(totalShuffleWrite) + " GB.")
+      println("Finished Join. Time taken: " + timeTakenInSeconds + " seconds");
     }
     System.exit(0);
   }

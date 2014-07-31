@@ -13,7 +13,7 @@ import stanford.infolab.joins.JoinsAlgorithm
 abstract class BaseShares(joinsArgs: JoinsArguments)
   extends JoinsAlgorithm(joinsArgs) {
 
-  def computeLineQuery(sc: SparkContext): RDD[_] = {
+  def computeQuery(sc: SparkContext): RDD[_] = {
     val NUM_RELATIONS: Int = joinsArgs.m
     val NUM_REDUCERS: Int = joinsArgs.reduceParallelism
     val NUM_DIMENSIONS: Int = joinsArgs.m - 1
