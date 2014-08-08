@@ -11,6 +11,7 @@ import stanford.infolab.joins.dys.DYS
 import stanford.infolab.joins.JoinAlgorithm._
 import stanford.infolab.joins.shares.NestedLoopJoinShares
 import stanford.infolab.joins.gj.GenericJoin
+import stanford.infolab.joins.gj.MemoryOptimizedGenericJoin
 
 object JoinsRunner {
 
@@ -66,6 +67,10 @@ object JoinsRunner {
         case GenericJoin => {
           println("Computing cycle query with GenericJoin.");
           joinsAlgorithm = new GenericJoin(joinsArgs);
+        }
+        case MemoryOptimizedGenericJoin => {
+          println("Computing cycle query with MemoryOpimizedGenericJoin.");
+          joinsAlgorithm = new MemoryOptimizedGenericJoin(joinsArgs);
         }
       }
       val finalJoin = joinsAlgorithm.computeQuery(sc);

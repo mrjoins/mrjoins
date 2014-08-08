@@ -16,6 +16,7 @@ class JoinsArguments(args: Array[String]) extends Serializable {
   var jars: Array[String] = Array.empty[String];
   var mapParallelism: Int = 10;
   var reduceParallelism: Int = 10;
+  var numPartitions: Short = 10; // num partitions to use for memory optimized columnar storages
   var cacheIntermediateResults: Boolean = false;
   var unpersistIntermediateResults: Boolean = false;
   var skipSemijoining: Boolean = false;
@@ -26,7 +27,7 @@ class JoinsArguments(args: Array[String]) extends Serializable {
   var isInputInAdjListFormat: Boolean = true;
   var numCores: Int = -1;
   var countMotifsOnce: Boolean = false;
-  
+
   parse(args.toList)
 
   if (inputFiles.length == 1 & m <= 1) {
@@ -56,6 +57,8 @@ class JoinsArguments(args: Array[String]) extends Serializable {
         joinAlgorithm = JoinAlgorithm.YannakakisShares;
       } else if (value == "gj") {
         joinAlgorithm = JoinAlgorithm.GenericJoin;
+      } else if (value == "mogj") {
+        joinAlgorithm = JoinAlgorithm.MemoryOptimizedGenericJoin;
       } else {
         throw new RuntimeException("Value of the algorithm (--algorithm or -alg argument) has to" +
           " be one of {dys/sharesNested/sharesYannakakis}");
@@ -108,6 +111,10 @@ class JoinsArguments(args: Array[String]) extends Serializable {
 	case ("--reduceParallelism" | "-rp") :: value :: tail =>
       reduceParallelism = value.toInt
 	  if (!tail.isEmpty) parse(tail)
+
+	case ("--numPartitions" | "-np") :: value :: tail =>
+      numPartitions = value.toShort
+    if (!tail.isEmpty) parse(tail)
 
   case ("--numCores" | "-nc") :: value :: tail =>
       numCores = value.toInt
@@ -175,6 +182,7 @@ class JoinsArguments(args: Array[String]) extends Serializable {
         |															of intial RDDs.
         |   -rp parallelism, --reduceParallelism parallism			Level of parallelism in `reducing` stages. Essentially sets the number of partitions
         |															of cogrouped/joined RDDs.
+        |   -np #partitions, --numPartitions #partitions Number of partitions to use when using the memory optimized columnar storage for joins.
         |   -nc #cores, --numCores #cores number of cores to use in the cluster when executing the algorithms. Essentially sets the spark.cores.max parameter
         |   -cir true/false, --cacheIntermediateResults true/false  Whether to cache intermediate results during the join.
         |   -unpersist true/false, --unpersist true/false			Whether to unpersist cached intermediate results when possible
@@ -193,5 +201,5 @@ class JoinsArguments(args: Array[String]) extends Serializable {
 
 object JoinAlgorithm extends Enumeration {
   type JoinAlgorithm = Value
-  val DYS, NestedLoopJoinShares, SortedNestedLoopJoinShares, YannakakisShares, GenericJoin = Value
+  val DYS, NestedLoopJoinShares, SortedNestedLoopJoinShares, YannakakisShares, GenericJoin, MemoryOptimizedGenericJoin = Value
 }
