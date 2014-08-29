@@ -109,7 +109,7 @@ class MemoryOptimizedGenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJ
   }
 
   private def computeNextIntersections(relationsIntMsgsCogrouped: 
-    RDD[(Short, (Seq[RelationPartition], Seq[IntersectionMessage]))], nextAttribute: Byte,
+    RDD[(Short, (Iterable[RelationPartition], Iterable[IntersectionMessage]))], nextAttribute: Byte,
     relationConditionedAttributesMap: ArrayBuffer[ArrayBuffer[Byte]],
     numRelationsWithNonEmptyConditions: Int, extensionRoundNo: Int): RDD[(Short, IntersectionMessage)] = {
     val intersections: RDD[(Short, IntersectionMessage)] = relationsIntMsgsCogrouped.flatMap(
@@ -119,7 +119,7 @@ class MemoryOptimizedGenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJ
           log.debug("partition: " + partitionID + " is empty, skipping when generating next intersections")
           Seq.empty
         } else {
-          val relationPartition = partIDPartitionIntMsgs._2._1(0)
+          val relationPartition = partIDPartitionIntMsgs._2._1.head
           val intersectionMsgs = partIDPartitionIntMsgs._2._2
           val intersectionMesssagesToEachPartition = new IntersectionMessagesToEachPartition(
             joinsArgs.numPartitions)
@@ -230,7 +230,7 @@ class MemoryOptimizedGenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJ
   // Starts the first intersections after making the plan.
   private def computeFirstNullIntersections(nextAttribute: Byte,
     relationConditionedAttributesMap: ArrayBuffer[ArrayBuffer[Byte]],
-    succCountOffersCogrouped: RDD[(Short, (Seq[ArrayBuffer[Int]], Seq[(Short, ArrayBuffer[ArrayBuffer[Int]])]))])
+    succCountOffersCogrouped: RDD[(Short, (Iterable[ArrayBuffer[Int]], Iterable[(Short, ArrayBuffer[ArrayBuffer[Int]])]))])
     : RDD[(Short, IntersectionMessage)] = {
 
     val intersections = succCountOffersCogrouped.flatMap(partitionIDTuplesOffers => {
@@ -239,7 +239,7 @@ class MemoryOptimizedGenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJ
         log.debug("There are NO succ tuples for partitionID: " + partitionID)
         Seq.empty
       } else {
-        val succTuples = partitionIDTuplesOffers._2._1(0)
+        val succTuples = partitionIDTuplesOffers._2._1.head
         log.debug("Starting to loop over the succ tuples for partitionID: " + partitionID)
         log.debug("succTuples: " + succTuples)
         val offers = new ArrayBuffer[ArrayBuffer[ArrayBuffer[Int]]](joinsArgs.numPartitions)
@@ -338,7 +338,7 @@ class MemoryOptimizedGenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJ
         log.info("there is no partition for partitionID: " + partitionID + " inside computeCountOffers.")
         Seq.empty
       } else {
-        val partition = partitionIDRequestPartition._2._2(0)
+        val partition = partitionIDRequestPartition._2._2.head
         log.debug("partitionID: " + partitionID + " partition: " + partition)
         val requests = partitionIDRequestPartition._2._1
         log.debug("requests: " + requests)
@@ -351,9 +351,10 @@ class MemoryOptimizedGenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJ
         for (i <- 0 to joinsArgs.numPartitions - 1) {
           outputs += ((i.toShort, (partitionID, null)))
         }
-        for (i <- 0 to requests.length-1) {
-          val srcPartitionID = requests(i)._1
-          val requestArray = requests(i)._2
+
+        for (elem <- requests) {
+          val srcPartitionID = elem._1
+          val requestArray = elem._2
           val offersToSrcPartition = new ArrayBuffer[ArrayBuffer[Int]](requestArray.length)
           outputs(srcPartitionID) = ((srcPartitionID.toShort, (partitionID, offersToSrcPartition)))
           for (relID <- 0 to requestArray.length - 1) {
@@ -505,7 +506,8 @@ class MemoryOptimizedGenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJ
 //    }
     val relations = partitionIDKeyRelIDValues.groupByKey(joinsArgs.reduceParallelism).map(
       partIDKeyRelIDValueSeq => (partIDKeyRelIDValueSeq._1,
-        RelationPartitionFactory(joinsArgs.schemas, partIDKeyRelIDValueSeq._2)))
+          // TODO(firas): again, check if it's okay to convert to Seq here
+        RelationPartitionFactory(joinsArgs.schemas, partIDKeyRelIDValueSeq._2.toSeq)))
     relations.setName("RELATIONS")
     relations
   }
