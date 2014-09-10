@@ -17,7 +17,7 @@ abstract class BaseShares(joinsArgs: JoinsArguments)
     val NUM_RELATIONS: Int = joinsArgs.m
     val NUM_REDUCERS: Int = joinsArgs.reduceParallelism
     val NUM_DIMENSIONS: Int = joinsArgs.m - 1
-    val DIMENSION_SIZE = Math.pow(NUM_REDUCERS.toDouble, 1.0 / NUM_DIMENSIONS.toDouble).toInt
+    val DIMENSION_SIZE: Int = Math.pow(NUM_REDUCERS.toDouble, 1.0 / NUM_DIMENSIONS.toDouble).toInt
 
     val relations = parseEdgesIntoRDDs(sc);
     val dataSet = sc.union(relations)
@@ -43,8 +43,8 @@ abstract class BaseShares(joinsArgs: JoinsArguments)
     }
     
     val flatMappedSet = dataSet.flatMap(tuple => getReduceKeysForTuple(tuple))
-    val groupedByKeySet = flatMappedSet.groupByKey(joinsArgs.reduceParallelism)
-    groupedByKeySet.flatMapValues(performLocalJoin);
+    val groupedByKeySet = flatMappedSet.groupByKey(NUM_REDUCERS)
+    groupedByKeySet.flatMapValues(performLocalJoin)
   }
 
   // Computes the entire reduce key space
@@ -66,7 +66,7 @@ abstract class BaseShares(joinsArgs: JoinsArguments)
     }).toArray
   }
 
-  def performLocalJoin(arrBuf: Seq[(Byte, Long, Long)]): Seq[Array[Long]];
+  def performLocalJoin(arrBuf: Iterable[(Byte, Long, Long)]): Seq[Array[Long]]
 
   def parseEdgesIntoRDDs(sc: SparkContext): List[RDD[(Byte, Long, Long)]] = {
     (for (i <- 0 until joinsArgs.m) yield {

@@ -61,7 +61,7 @@ class JoinsArguments(args: Array[String]) extends Serializable {
         joinAlgorithm = JoinAlgorithm.MemoryOptimizedGenericJoin;
       } else {
         throw new RuntimeException("Value of the algorithm (--algorithm or -alg argument) has to" +
-          " be one of {dys/sharesNested/sharesYannakakis}");
+          " be one of {dys/sharesNested/sharesYannakakis/gj/mogj}");
       }
 	  if (!tail.isEmpty) parse(tail)
 
@@ -71,7 +71,7 @@ class JoinsArguments(args: Array[String]) extends Serializable {
       val schemasStringSplit = value.split("::")
 	    schemas = new Array[(Byte, Byte)](schemasStringSplit.length)
       for (i <- 0 to schemasStringSplit.length - 1) {
-        val schema = schemasStringSplit(i).split("-");
+        val schema = schemasStringSplit(i).split(",");
         schemas(i) = (schema(0).toByte, schema(1).toByte);
       }
 	    if (!tail.isEmpty) parse(tail)
@@ -114,11 +114,11 @@ class JoinsArguments(args: Array[String]) extends Serializable {
 
 	case ("--numPartitions" | "-np") :: value :: tail =>
       numPartitions = value.toShort
-    if (!tail.isEmpty) parse(tail)
+      if (!tail.isEmpty) parse(tail)
 
-  case ("--numCores" | "-nc") :: value :: tail =>
-      numCores = value.toInt
-    if (!tail.isEmpty) parse(tail)
+	case ("--numCores" | "-nc") :: value :: tail =>
+	  numCores = value.toInt
+	  if (!tail.isEmpty) parse(tail)
 
 	case ("--cacheIntermediateResults" | "-cir") :: value :: tail =>
       cacheIntermediateResults = value.toBoolean
@@ -152,7 +152,7 @@ class JoinsArguments(args: Array[String]) extends Serializable {
       logLevel = Level.DEBUG
 	  if (!tail.isEmpty) parse(tail)
     
-  case ("--help" | "-h") :: tail =>
+    case ("--help" | "-h") :: tail =>
       printUsageAndExit(0)
 
     case _ =>
@@ -161,7 +161,7 @@ class JoinsArguments(args: Array[String]) extends Serializable {
   }
 
   /**
-   * Print usage of DYS and exit JVM with the given exit code.
+   * Print usage of JoinsRunner and exit JVM with the given exit code.
    */
   def printUsageAndExit(exitCode: Int) {
     val usage =
@@ -171,7 +171,7 @@ class JoinsArguments(args: Array[String]) extends Serializable {
         |
         |***Currently only implements line queries***
         |Options:
-        |   -alg {dys/sharesNested/sharesYannakakis}, --algorithm {dys/sharesNested/sharesYannakakis} Which distributed join algorithm to run
+        |   -alg {dys/sharesNested/sharesYannakakis/gj/mogj}, --algorithm {dys/sharesNested/sharesYannakakis/gj/mogj} Which distributed join algorithm to run
         |   -ifs file1::file2::..., --inputFiles file1::file2::... 	Full path to the input relation files separated by ::
         |   -iformat adj/edge, --inputFormat adj/edge The format of the input files. Can either be adjlist or edgelist.
         |   -m numRelations, --numRelations numRelations 			Number of relations to join. Should be specified only if only one input file is specified.
@@ -190,7 +190,8 @@ class JoinsArguments(args: Array[String]) extends Serializable {
         |   -nteq [# times], --numTimesToExecuteQuery [# times]	    Number of times to execute query.
         |   -kryo {true/false}, --kryoCompression {true/false}      Whether to use kryo compression.
         |   -kbs bufferSizeMB, --kryoBufferSizeMB                   Kryo buffer size in MB (10 by default)
-        |   -cmo {true/false}, --countMotifsOnce {true/false}  Whether to count triangles/rectangles once.
+        |   -cmo {true/false}, --countMotifsOnce {true/false}  		Whether to count triangles/rectangles once.
+        |   -sch i,j::m,n::..., --schema i,j::m,n::...		  		Schema of each relation R_k=(A_i, A_j) where i < j
         |   -v, --verbose                  							Print more debugging output
       
       """.stripMargin
