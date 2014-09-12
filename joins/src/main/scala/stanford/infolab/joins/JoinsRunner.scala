@@ -3,6 +3,7 @@ package	stanford.infolab.joins
 
 import scala.collection.mutable.HashMap
 import org.apache.log4j.Logger
+import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.scheduler.SparkListener
@@ -42,8 +43,8 @@ object JoinsRunner {
       environmentMap +=  "spark.deploy.defaultCores" -> joinsArgs.numCores.toString;
     }
     println("running with shuffle file consolidation");
-    val sc = new SparkContext(joinsArgs.sparkMasterAddr, "MRJoins", System.getenv("SPARK_HOME"),
-      joinsArgs.jars, environmentMap, null);
+    val conf = new SparkConf().setAppName("MRJoins")
+    val sc = new SparkContext(conf)
     val listener = new ShuffleReadAndWriteListener(sc);
     sc.addSparkListener(listener)
     
@@ -97,7 +98,7 @@ object JoinsRunner {
       println("totalShuffleWrite: " + "%.3f".format(totalShuffleWrite) + " GB.")
       println("Finished Join. Time taken: " + timeTakenInSeconds + " seconds");
     }
-    System.exit(0);
+    sc.stop()
   }
 
   class ShuffleReadAndWriteListener(val sc: SparkContext) extends SparkListener {
