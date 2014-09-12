@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -eu
+
+# The absolute path of the jar file for the application
+APP_JAR=/home/fabuzaid/mrjoins-firas/joins/target/scala-2.10/mrjoins_2.10-1.0.jar
+
+# The class to submit to Spark
+CLASS=stanford.infolab.joins.JoinsRunner
+
+spark-submit --class $CLASS --master yarn-cluster $APP_JAR -alg mogj -ifs /user/fabuzaid/share/data/wiki.txt -iformat edgelist -m 3 -sch 0,1::1,2::0,2 -cmo true
+
+#sbt -Djline.terminal=jline.UnsupportedTerminal -Dsbt.log.noformat=true -Dspark.executor.memory=4g -Dsbt.boot.directory=/home/fabuzaid/.sbt/boot/ -Divy.default.ivy.user.dir=/home/fabuzaid/.ivy2/ -Duser.home=/home/fabuzaid/ "run -sm spark://ilhadoop1v1.stanford.edu:7077 --jars target/scala-2.10/mrjoins_2.10-1.0.jar -alg mogj -ifs /home/fabuzaid/data/small.txt -iformat edgelist -m 3 -sch 0,1::1,2::0,2 -cmo true"
+
+#sbt -Djline.terminal=jline.UnsupportedTerminal -Dsbt.log.noformat=true -Dspark.executor.memory=45g -Dsbt.boot.directory=/home/fabuzaid/.sbt/boot/ -Divy.default.ivy.user.dir=/home/fabuzaid/.ivy2/ -Duser.home=/home/fabuzaid/ "run -sm spark://ilh01.stanford.edu:7078 --jars target/scala-2.10/spark-sql-hive_2.10-1.0.jar  -mp $mappers -rp $reducers  -cir true -unpersist true --kryoBufferSizeMB $kryoBufferSizeMB -kryo $kryo" &
