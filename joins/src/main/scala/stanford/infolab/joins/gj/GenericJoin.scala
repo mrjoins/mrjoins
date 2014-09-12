@@ -64,12 +64,15 @@ class GenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJoin(joinsArgs) 
     val numRelsWithCondAttributes = relConditionAttributeIndices.length
     var intersections = succCountOffersCogrouped.flatMap(tbOffers => {
       val tuple: ArrayBuffer[Int] = tbOffers._1
-      if (tbOffers._2._2.length < numRelsWithCondAttributes) {
+      // TODO(firas): check to see if calling `size' on tbOffers._2._2 (which is an Iterable) is performant
+      if (tbOffers._2._2.size < numRelsWithCondAttributes) {
         log.debug("tuple: " + tuple.mkString(" ") + " did not receive enough offers, the " +
           "intersection must be empty.")
         Seq.empty 
       } else {
-        val plan = tbOffers._2._2.sortWith((a, b) => a._2 <= b._2).map(a => a._1)
+        // TODO(firas): see if there's something better we can do instead of calling toSeq
+        val tbOffersValues = tbOffers._2._2.toSeq
+        val plan = tbOffersValues.sortWith((a, b) => a._2 <= b._2).map(a => a._1)
         // POSSIBLE BUG FOR LATER VERSIONS: Since (for now) we can only be conditioning
         // on the first attribute, we directly take a look at the first attribute.
         val attributeVal: Int = tuple(joinsArgs.schemas(plan(0))._1)
@@ -98,7 +101,7 @@ class GenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJoin(joinsArgs) 
           throw new IllegalStateException(errorMsg)
         } else {
           val firstAttr = firstattrAdjlistTuplePlanIntersection._1._2
-          val adjList = firstattrAdjlistTuplePlanIntersection._2._1(0)
+          val adjList = firstattrAdjlistTuplePlanIntersection._2._1.head
           val outputs = new ArrayBuffer[((Byte, Int), (ArrayBuffer[Int], Seq[Byte], ArrayBuffer[Int]))]()
           for (tuplePlanIntersection <- firstattrAdjlistTuplePlanIntersection._2._2) {
             val tuple = tuplePlanIntersection._1
@@ -159,7 +162,7 @@ class GenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJoin(joinsArgs) 
       if (relAttrTuple._2._2.isEmpty) {
         Seq.empty
       } else {
-        var offerSize = if (relAttrTuple._2._2.isEmpty) 0 else relAttrTuple._2._2(0).length
+        var offerSize = if (relAttrTuple._2._2.isEmpty) 0 else relAttrTuple._2._2.head.length
         if (offerSize == 0) {
           Seq.empty
         } else {
@@ -167,7 +170,7 @@ class GenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJoin(joinsArgs) 
           // Relation i only offers counts if its adj list is non-empty
           for (tuple <- relAttrTuple._2._1) {
             if (joinsArgs.countMotifsOnce) {
-              offerSize = binarySearchIndexWithMinValueGreaterThanX(relAttrTuple._2._2(0),
+              offerSize = binarySearchIndexWithMinValueGreaterThanX(relAttrTuple._2._2.head,
                 tuple.last);
             }
             outputs += ((tuple, (relIndex, offerSize)))
@@ -219,7 +222,8 @@ class GenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJoin(joinsArgs) 
     groupedFirstAttributes.setName("GROUPED_FIRST_ATTRIBUTE")
     debugRelation(groupedFirstAttributes);
     val succ = groupedFirstAttributes.flatMap(attrRelations => 
-      if (attrRelations._2.length == a1IndicesLength) Seq((ArrayBuffer(attrRelations._1), false))
+      // TODO(firas): same as before -- check to make sure calling `size' here is okay
+      if (attrRelations._2.size == a1IndicesLength) Seq((ArrayBuffer(attrRelations._1), false))
       else None)
     succ.setName("SUCC_A0")
     succ
@@ -238,7 +242,8 @@ class GenericJoin(joinsArgs: JoinsArguments) extends BaseGenericJoin(joinsArgs) 
       val edgesRDDInAdjListFormat: RDD[((Byte, Int), ArrayBuffer[Int])] =
         edgesRDD.groupByKey().map(value => {
           val adjList = new ArrayBuffer[Int]();
-          adjList.appendAll(value._2.sortWith(_ < _))
+          // TODO(firas): same as before -- see if there's something better we can do besides converting to Seq
+          adjList.appendAll(value._2.toSeq.sortWith(_ < _))
           (value._1, adjList)
         })
 

@@ -1,17 +1,21 @@
 /*** JoinsRunner.scala ***/
 package	stanford.infolab.joins
 
+import scala.collection.mutable.HashMap
+import org.apache.log4j.Logger
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
-import org.apache.log4j.Logger
-import scala.collection.mutable.HashMap
 import org.apache.spark.scheduler.SparkListener
 import org.apache.spark.scheduler.SparkListenerTaskEnd
-import stanford.infolab.joins.dys.DYS
 import stanford.infolab.joins.JoinAlgorithm._
-import stanford.infolab.joins.shares.NestedLoopJoinShares
+import stanford.infolab.joins.dys.DYS
 import stanford.infolab.joins.gj.GenericJoin
 import stanford.infolab.joins.gj.MemoryOptimizedGenericJoin
+import stanford.infolab.joins.shares.NestedLoopJoinShares
+import java.io.File
+import scala.reflect.io.Path
+
+
 
 object JoinsRunner {
 
@@ -79,6 +83,8 @@ object JoinsRunner {
         println("\nFINAL JOIN.  size: " + finalJoin.count() + "\n");
       } else {
         val timeBeforeWriting = System.currentTimeMillis();
+        val path: Path = Path(joinsArgs.outputFile)
+        path.deleteRecursively
         finalJoin.saveAsTextFile(joinsArgs.outputFile);
         println("Total time to write the output: " + (System.currentTimeMillis() - timeBeforeWriting)
           + "ms.");
@@ -99,7 +105,7 @@ object JoinsRunner {
     var totalShuffleWrite = 0L
 
     override def onTaskEnd(taskEnd: SparkListenerTaskEnd) = synchronized {
-      val sid = taskEnd.task.stageId
+      val sid = taskEnd.stageId
       val metrics = Option(taskEnd.taskMetrics);
       totalShuffleRead += metrics.flatMap(m => m.shuffleReadMetrics).map(s =>
         s.remoteBytesRead).getOrElse(0L)

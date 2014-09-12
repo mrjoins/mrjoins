@@ -108,7 +108,7 @@ object RelationPartitionFactory {
   def apply(schemas: Array[(Byte, Byte)], keyRelIDValues: Seq[(Int, Byte, Int)]):
     RelationPartition = {
     val numValues = keyRelIDValues.size
-    val krvGroupedByK = keyRelIDValues.groupBy(krv => krv._1);
+    val krvGroupedByK = keyRelIDValues.groupBy(krv => krv._1)
     val numKeys = krvGroupedByK.keys.size
     var sortedKeys = new ArrayBuffer[Int](numKeys)
     sortedKeys.appendAll(krvGroupedByK.keys)
